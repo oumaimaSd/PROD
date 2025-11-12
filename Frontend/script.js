@@ -1,4 +1,4 @@
-const API = "http://192.168.1.250:4800";
+const API = window.location.origin;
 
 
 async function ajouterTache() {
