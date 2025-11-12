@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Historique Production</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #f5f6fa, #dcdde1);
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background: #bdc0c9;
+    color: rgb(41, 38, 38);
+    padding: 15px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+header h2 {
+    margin: 0;
+    font-size: 1.6em;
+    letter-spacing: 1px;
+}
+header button {
+    background: #e84118;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: 0.3s;
+}
+header button:hover {
+    background: #c23616;
+}
+
+.filter-container {
+    margin: 25px auto;
+    text-align: center;
+}
+.filter-container input {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin: 0 8px;
+    width: 200px;
+    transition: 0.3s;
+}
+.filter-container input:focus {
+    border-color: #273c75;
+    outline: none;
+}
+
+table {
+    width: 95%;
+    margin: 0 auto 30px auto;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+thead {
+    background: #273c75;
+    color: white;
+}
+th, td {
+    padding: 10px 12px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+tbody tr:hover {
+    background: #f1f2f6;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2em;
+    margin: 0 5px;
+    transition: 0.3s;
+}
+.action-btn.edit { color: #273c75; }
+.action-btn.delete { color: #e84118; }
+.action-btn:hover { transform: scale(1.2); }
+
+.return-btn {
+    display: block;
+    margin: 0 auto 40px;
+    background: #44bd32;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.return-btn:hover {
+    background: #4cd137;
+}
+</style>
+</head>
+
+<body>
+<header>
+    <h2>📊 Historique des Tâches</h2>
+    <button onclick="window.location.href='production.html'">⬅ Retour à la Production</button>
+</header>
+
+<div class="filter-container">
+    <input type="text" id="filterNumHist" placeholder="🔎 Filtrer par N° Document" oninput="filtrerHistorique()">
+    <input type="date" id="filterDateHist" oninput="filtrerHistorique()">
+</div>
+
+<table id="tableHistorique">
+    <thead>
+        <tr>
+            <th>N° Document</th>
+            <th>Nom Opérateur</th>
+            <th>Nb Opérateurs</th>
+            <th>Opération</th>
+            <th>Date Début</th>
+            <th>Date Fin</th>
+            <th>Durée Pause</th>
+            <th>Cause Pause</th>
+            <th>Période Totale</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script>
+const API = "http://localhost:3000"; // à adapter si ton serveur est sur une autre IP
+let historiqueData = [];
+
+async function afficherHistorique() {
+    const res = await fetch(`${API}/historique`);
+    const data = await res.json();
+    historiqueData = data;
+    remplirTableau(data);
+}
+
+function remplirTableau(data) {
+    const tbody = document.querySelector('#tableHistorique tbody');
+    tbody.innerHTML = '';
+
+    data.forEach(t => {
+        const tr = document.createElement('tr');
+        const dateDebut = new Date(t.dateDebut);
+        const dateFin = t.dateFin ? new Date(t.dateFin) : null;
+
+        tr.innerHTML = `
+            <td>${t.nDocument}</td>
+            <td>${t.nomOperateur}</td>
+            <td>${t.nbreOperateurs}</td>
+            <td>${t.operation}</td>
+            <td>${dateDebut.toLocaleString()}</td>
+            <td>${dateFin ? dateFin.toLocaleString() : '-'}</td>
+            <td>${formatHMS(t.dureePause || 0)}</td>
+            <td>${t.causePause || '-'}</td>
+            <td>${formatHMS(t.periodeTotale || 0)}</td>
+            <td style="color:green;font-weight:bold;">FIN</td>
+            <td>
+                <button class="action-btn edit" onclick="modifierTache(${t.id})"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button class="action-btn delete" onclick="supprimerTache(${t.id})"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function formatHMS(totalMinutes) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = Math.floor(totalMinutes % 60);
+    const s = Math.floor((totalMinutes - Math.floor(totalMinutes)) * 60);
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function filtrerHistorique() {
+    const num = document.getElementById('filterNumHist').value.trim().toLowerCase();
+    const dateFiltre = document.getElementById('filterDateHist').value;
+
+    const resultatsFiltres = historiqueData.filter(t => {
+        const correspondNum = t.nDocument?.toLowerCase().includes(num);
+        const correspondDate = dateFiltre 
+            ? new Date(t.dateDebut).toISOString().split('T')[0] === dateFiltre
+            : true;
+        return correspondNum && correspondDate;
+    });
+
+    remplirTableau(resultatsFiltres);
+}
+
+async function supprimerTache(id) {
+    if (!confirm("🗑️ Voulez-vous vraiment supprimer cette tâche ?")) return;
+    const res = await fetch(`${API}/tache/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+        alert("Tâche supprimée avec succès !");
+        afficherHistorique();
+    } else {
+        alert("Erreur lors de la suppression.");
+    }
+}
+
+function modifierTache(id) {
+    alert(`✏️ Fonction de modification à venir pour l'ID ${id}`);
+}
+
+
+afficherHistorique();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Résumé des Documents | STEB</title>
+
+<!-- Librairies -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #f8f9fb;
+  margin: 0;
+  padding: 100px 0 60px 0;
+  color: #333;
+}
+nav {
+  background: #971010;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 30px;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  z-index: 1000;
+}
+nav h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#exportExcel {
+  background: #00b894;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: 600;
+  margin-right: 200px;
+}
+#exportExcel:hover { background: #019870; transform: scale(1.05); }
+
+.filter-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 80px;
+  flex-wrap: wrap;
+}
+.filter-bar input {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+.filter-bar input:focus { border-color: #971010; }
+
+table {
+  width: 95%;
+  margin: 20px auto;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+thead {
+  background: #971010;
+  color: white;
+  font-size: 15px;
+  cursor: pointer;
+}
+th, td {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+}
+tr:nth-child(even) { background-color: #fafafa; }
+tr:hover { background-color: #fff3f3; transition: 0.2s; }
+
+th.sortable:hover {
+  background: #b22222;
+}
+th i {
+  margin-left: 5px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.doc-title {
+  background: #e6e6e6;
+  font-weight: bold;
+  text-align: left;
+  padding: 10px;
+  color: #971010;
+}
+
+footer {
+  position: fixed;
+  bottom: 0; left: 0;
+  width: 100%;
+  text-align: center;
+  background: #2b2d42;
+  color: white;
+  padding: 10px;
+  font-size: 13px;
+}
+</style>
+</head>
+<body>
+<nav>
+  <h2><i class="fa-solid fa-file-lines"></i> Résumé des Documents</h2>
+  <button id="exportExcel"><i class="fa-solid fa-file-excel"></i> Exporter Excel</button>
+</nav>
+
+<div class="filter-bar">
+  <input type="text" id="filtreDoc" placeholder="🔍 Filtrer par N° document...">
+  <input type="date" id="filtreDebut">
+  <input type="date" id="filtreFin">
+</div>
+
+<section>
+  <table id="tableResume">
+    <thead>
+      <tr>
+        <th class="sortable" data-col="nDocument">N° Document <i class="fa-solid fa-sort"></i></th>
+        <th>Opération</th>
+        <th>Ouvriers</th>
+        <th class="sortable" data-col="dateDebut">Début <i class="fa-solid fa-sort"></i></th>
+        <th class="sortable" data-col="dateFin">Fin <i class="fa-solid fa-sort"></i></th>
+        <th>Durée Pauses</th>
+        <th>Durée Effective</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<footer>© 2025 STEB | Résumé des Documents</footer>
+
+<script>
+const API = "http://192.168.1.250:4800";
+let toutesTaches = [];
+let currentSort = { col: null, asc: true };
+
+// 🕒 Formater une durée en heures, minutes, secondes
+function formatDuree(minutes) {
+  if (!minutes || minutes < 0) minutes = 0;
+  const totalSeconds = Math.round(minutes * 60);
+  const heures = Math.floor(totalSeconds / 3600);
+  const minutesRestantes = Math.floor((totalSeconds % 3600) / 60);
+  const secondes = totalSeconds % 60;
+  return `${heures}h ${minutesRestantes}m ${secondes}s`;
+}
+
+// 📊 Charger toutes les données depuis l'API
+async function chargerTaches() {
+  try {
+    const res = await fetch(`${API}/historique`);
+    if (!res.ok) throw new Error("Erreur API");
+    toutesTaches = await res.json();
+    afficherResume(toutesTaches);
+  } catch (err) {
+    console.error(err);
+    alert("Erreur lors du chargement du résumé.");
+  }
+}
+
+// 🔍 Appliquer les filtres
+function filtrer() {
+  const filtreDoc = document.getElementById("filtreDoc").value.trim().toLowerCase();
+  const dateDebut = document.getElementById("filtreDebut").value ? new Date(document.getElementById("filtreDebut").value) : null;
+  const dateFin = document.getElementById("filtreFin").value ? new Date(document.getElementById("filtreFin").value) : null;
+
+  let dataFiltrée = toutesTaches.filter(t => {
+    const docOk = t.nDocument.toLowerCase().includes(filtreDoc);
+    const debut = new Date(t.dateDebut);
+    const dateOk =
+      (!dateDebut || debut >= dateDebut) &&
+      (!dateFin || debut <= dateFin);
+    return docOk && dateOk;
+  });
+
+  if (currentSort.col) {
+    dataFiltrée.sort((a, b) => {
+      let valA = a[currentSort.col];
+      let valB = b[currentSort.col];
+      if (currentSort.col.includes("date")) {
+        valA = new Date(valA);
+        valB = new Date(valB);
+      }
+      if (valA < valB) return currentSort.asc ? -1 : 1;
+      if (valA > valB) return currentSort.asc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  afficherResume(dataFiltrée);
+}
+
+// 🧾 Afficher le résumé dans le tableau
+function afficherResume(data) {
+  const tbody = document.querySelector("#tableResume tbody");
+  tbody.innerHTML = "";
+
+  const docs = {};
+  data.forEach(t => {
+    if (!docs[t.nDocument]) docs[t.nDocument] = [];
+    docs[t.nDocument].push(t);
+  });
+
+  for (const [nDoc, taches] of Object.entries(docs)) {
+    const trTitre = document.createElement("tr");
+    trTitre.innerHTML = `<td colspan="7" class="doc-title">📄 N° : <strong>${nDoc}</strong></td>`;
+    tbody.appendChild(trTitre);
+
+    let totalPauseDoc = 0;
+    let totalDureeDoc = 0;
+
+    taches.forEach(t => {
+      let dureePause = 0;
+      const debut = new Date(t.dateDebut);
+      const fin = new Date(t.dateFin);
+      const dureeTotale = (fin - debut) / (1000 * 60);
+
+      try {
+        const pauses = JSON.parse(t.pauses || "[]");
+        pauses.forEach(p => {
+          if (p.debut && p.fin) dureePause += (new Date(p.fin) - new Date(p.debut)) / (1000 * 60);
+        });
+      } catch {}
+
+      const dureeEffective = dureeTotale - dureePause;
+      totalPauseDoc += dureePause;
+      totalDureeDoc += dureeEffective;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${nDoc}</td>
+        <td>${t.operation}</td>
+        <td>${t.nomOperateur || "-"}</td>
+        <td>${new Date(t.dateDebut).toLocaleString()}</td>
+        <td>${new Date(t.dateFin).toLocaleString()}</td>
+        <td style="color:#b34700">${formatDuree(dureePause)}</td>
+        <td style="color:#006400;font-weight:bold">${formatDuree(dureeEffective)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const trTotal = document.createElement("tr");
+    trTotal.style.background = "#f0f0f0";
+    trTotal.style.fontWeight = "bold";
+    trTotal.innerHTML = `
+      <td colspan="5" style="text-align:right;">Total pour ${nDoc} :</td>
+      <td style="color:#b34700">${formatDuree(totalPauseDoc)}</td>
+      <td style="color:#006400">${formatDuree(totalDureeDoc)}</td>
+    `;
+    tbody.appendChild(trTotal);
+  }
+}
+
+// ⚙️ Gestion du tri par clic sur les entêtes
+document.querySelectorAll("th.sortable").forEach(th => {
+  th.addEventListener("click", () => {
+    const col = th.dataset.col;
+    if (currentSort.col === col) {
+      currentSort.asc = !currentSort.asc;
+    } else {
+      currentSort.col = col;
+      currentSort.asc = true;
+    }
+
+    document.querySelectorAll("th.sortable i").forEach(i => i.className = "fa-solid fa-sort");
+    th.querySelector("i").className = currentSort.asc ? "fa-solid fa-sort-up" : "fa-solid fa-sort-down";
+    filtrer();
+  });
+});
+
+// 🧩 Événements sur les filtres (instantané)
+document.getElementById("filtreDoc").addEventListener("input", filtrer);
+document.getElementById("filtreDebut").addEventListener("change", filtrer);
+document.getElementById("filtreFin").addEventListener("change", filtrer);
+
+// 📤 Export Excel
+document.getElementById("exportExcel").addEventListener("click", () => {
+  const table = document.getElementById("tableResume");
+  const wb = XLSX.utils.table_to_book(table, { sheet: "Résumé Documents" });
+  XLSX.writeFile(wb, "Resume_Documents_STEB.xlsx");
+});
+
+chargerTaches();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Historique Production | STEB</title>
+
+<!-- Librairies -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+/* ----- STYLE GLOBAL ----- */
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #f4f5f7;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+/* ----- BARRE DE NAVIGATION ----- */
+nav {
+  background-color: #971010;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 25px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+nav h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+nav img {
+  height: 45px;
+}
+
+nav button {
+  background-color: #fff;
+  border: none;
+  color: #971010;
+  font-size: 14px;
+  padding: 8px 16px;
+  margin-left: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+  font-weight: 600;
+}
+nav button:hover {
+  background-color: #f3d7d7;
+  transform: scale(1.05);
+}
+
+/* ----- SECTION FILTRES ----- */
+.filter-container {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 25px auto;
+  padding: 10px;
+}
+
+.filter-container input {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 2px solid #ccc;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.3s;
+  min-width: 200px;
+}
+.filter-container input:focus {
+  border-color: #971010;
+  box-shadow: 0 0 6px rgba(151,16,16,0.4);
+}
+
+/* ----- TABLEAU ----- */
+table {
+  width: 95%;
+  margin: 0 auto 40px auto;
+  border-collapse: collapse;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+thead {
+  background-color: #971010;
+  color: #fff;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+
+th, td {
+  padding: 12px 10px;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+tr:nth-child(even) {
+  background-color: #fafafa;
+}
+
+tr:hover {
+  background-color: #ffeaea;
+  transition: 0.3s;
+}
+
+/* ----- BOUTONS D’ACTION ----- */
+button.voir-btn {
+  background: #0984e3;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: 0.3s;
+}
+button.voir-btn:hover {
+  background: #74b9ff;
+  transform: scale(1.05);
+}
+
+/* ----- STATUT ----- */
+.status-fin {
+  color: #27ae60;
+  font-weight: bold;
+}
+.status-enpause {
+  color: #e67e22;
+  font-weight: bold;
+}
+
+/* ----- PIED DE PAGE ----- */
+footer {
+  background-color: #2b2d42;
+  color: #fff;
+  text-align: center;
+  padding: 12px;
+  font-size: 13px;
+}
+
+/* ----- RESPONSIVE ----- */
+@media (max-width: 900px) {
+  table {
+    font-size: 12px;
+  }
+  th, td {
+    padding: 8px;
+  }
+  nav h2 {
+    font-size: 18px;
+  }
+  .filter-container input {
+    min-width: 150px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<nav>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <img src="images/logo.png" alt="Logo STEB">
+    <h2 id="titreCentre">Historique de Production</h2>
+  </div>
+  <div>
+    <button onclick="window.location.href='production.html'"><i class="fa-solid fa-toolbox"></i> Production</button>
+    <button onclick="window.location.href='ouvriers.html'"><i class="fa-solid fa-users"></i> Ouvriers</button>
+    <button onclick="window.location.href='pauses.html'"><i class="fa-solid fa-pause-circle"></i> Pauses</button>
+    <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Quitter</button>
+  </div>
+</nav>
+
+<!-- Filtres -->
+<div class="filter-container">
+  <input type="text" id="filterNumHist" placeholder="🔎 N° Document" oninput="filtrerHistorique()">
+  <input type="text" id="filterOuvrier" placeholder="👷 Nom Ouvrier" oninput="filtrerHistorique()">
+  <input type="date" id="filterDateHist" oninput="filtrerHistorique()">
+</div>
+
+<table id="tableHistorique">
+  <thead>
+    <tr>
+      <th>N° Document</th>
+      <th>Nom Opérateur</th>
+      <th>Nb Opérateurs</th>
+      <th>Opération</th>
+      <th>Début</th>
+      <th>Fin</th>
+      <th>Durée Pause</th>
+      <th>Cause Pause</th>
+      <th>Nb Pauses</th>
+      <th>Période Totale</th>
+      <th>Status</th>
+      <th>Historique Pause</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<footer>
+  © 2025 STEB | Suivi & Historique de Production
+</footer>
+
+<script>
+document.getElementById('titreCentre').innerText = localStorage.getItem('centreCharge') || 'STEB - Historique';
+
+let historiqueData = [];
+
+async function afficherHistorique() {
+  const res = await fetch("http://192.168.1.250:4800/historique");
+  const data = await res.json();
+  historiqueData = data;
+  remplirTableau(data);
+}
+
+function remplirTableau(data) {
+  const tbody = document.querySelector('#tableHistorique tbody');
+  tbody.innerHTML = '';
+
+  data.forEach(t => {
+    const tr = document.createElement('tr');
+
+    // --- Dates ---
+    const dateDebut = new Date(t.dateDebut);
+    const dateFin = t.dateFin ? new Date(t.dateFin) : null;
+
+    // --- Pauses ---
+    const nbPauses = JSON.parse(t.pauses || '[]').length;
+    const totalPause = formatHMS(calculerTotalPauses(t.pauses));
+
+    // --- 🔹 GESTION DES OUVRIERS AVANT + APRÈS MODIFICATION ---
+    let allOuvriers = [];
+
+    try {
+      // Si `t.historiqueOuvriers` existe dans ta base, on le parse
+      const hist = JSON.parse(t.historiqueOuvriers || '[]');
+      hist.forEach(h => {
+        if (Array.isArray(h)) allOuvriers.push(...h);
+        else if (h.nom) allOuvriers.push(h.nom);
+      });
+    } catch {}
+
+    // Ajouter aussi les ouvriers actuels (nomOperateur)
+    try {
+      const actuels = JSON.parse(t.nomOperateur || '[]');
+      allOuvriers.push(...actuels);
+    } catch {
+      if (t.nomOperateur) allOuvriers.push(t.nomOperateur);
+    }
+
+    // Supprimer doublons
+    allOuvriers = [...new Set(allOuvriers.filter(o => o && o.trim() !== ''))];
+
+    // Calcul du total distinct
+    const nbreTotalOuvriers = allOuvriers.length;
+
+    // --- Ligne du tableau ---
+    tr.innerHTML = `
+      <td>${t.nDocument}</td>
+      <td>${allOuvriers.join(', ')}</td>
+      <td>${nbreTotalOuvriers}</td>
+      <td>${t.operation}</td>
+      <td>${dateDebut.toLocaleString()}</td>
+      <td>${dateFin ? dateFin.toLocaleString() : '-'}</td>
+      <td>${totalPause}</td>
+      <td>${t.causePause || '-'}</td>
+      <td>${nbPauses}</td>
+      <td>${formatHMS(t.periodeTotale || 0)}</td>
+      <td class="status-fin">FIN</td>
+      <td><button class="voir-btn" onclick="ouvrirPauses('${t.nDocument}')">Voir</button></td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+const hist = JSON.parse(t.historiqueOuvriers || '[]');
+hist.forEach(h => {
+  if (Array.isArray(h)) allOuvriers.push(...h);
+  else if (h.nom) allOuvriers.push(h.nom);
+});
+
+
+function filtrerHistorique() {
+  const num = document.getElementById('filterNumHist').value.trim().toLowerCase();
+  const ouvrier = document.getElementById('filterOuvrier').value.trim().toLowerCase();
+  const dateFiltre = document.getElementById('filterDateHist').value;
+
+  const resultatsFiltres = historiqueData.filter(t => {
+    const correspondNum = t.nDocument?.toLowerCase().includes(num);
+    const correspondOuvrier = t.nomOperateur?.toLowerCase().includes(ouvrier);
+    const correspondDate = dateFiltre 
+      ? new Date(t.dateDebut).toISOString().split('T')[0] === dateFiltre
+      : true;
+    return correspondNum && correspondOuvrier && correspondDate;
+  });
+
+  remplirTableau(resultatsFiltres);
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = 'login.html';
+}
+
+function calculerTotalPauses(pausesJSON) {
+  if (!pausesJSON) return 0;
+  let pauses = [];
+  try { pauses = JSON.parse(pausesJSON); } catch { pauses = []; }
+  let totalMinutes = 0;
+  pauses.forEach(p => {
+    if (p.debut && p.fin) {
+      const diffMs = new Date(p.fin) - new Date(p.debut);
+      totalMinutes += diffMs / 60000;
+    }
+  });
+  return totalMinutes;
+}
+
+function formatHMS(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = Math.floor(totalMinutes % 60);
+  const s = Math.floor((totalMinutes - Math.floor(totalMinutes)) * 60);
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+function ouvrirPauses(numDoc) {
+  window.location.href = `pauses.html?nDocument=${encodeURIComponent(numDoc)}`;
+}
+chargerHistorique();
+afficherHistorique();
+remplirTableau ();
+</script>
+</body>
+</html>

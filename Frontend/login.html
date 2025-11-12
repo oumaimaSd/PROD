@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Login - Suivi Production</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+    body {
+        font-family: 'Poppins', sans-serif;
+        background: linear-gradient(135deg, #e7e8eb, #e7e8eb);
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+    }
+
+    .login-container {
+        background-color: #fff;
+        padding: 60px 40px;
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        text-align: center;
+        width: 360px;
+        animation: fadeIn 0.45s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-container img {
+        width: 90px;
+        margin-bottom: 8px;
+    }
+
+    .login-container h2 {
+        margin-bottom: 18px;
+        color: #2b2d42;
+        font-size: 20px;
+    }
+
+    .input-group {
+        position: relative;
+        margin-bottom: 16px;
+        text-align: left;
+    }
+
+    .input-group label {
+        display:block;
+        font-size:13px;
+        margin-bottom:6px;
+        color:#333;
+    }
+
+    .input-group input {
+        width: 100%;
+        padding: 12px 40px 12px 12px;
+        border: 1.8px solid #d1d5db;
+        border-radius: 8px;
+        outline: none;
+        transition: 0.18s;
+        font-size: 15px;
+        box-sizing: border-box;
+    }
+
+    .input-group input:focus {
+        border-color: #6c5ce7;
+        box-shadow: 0 0 0 4px rgba(108,92,231,0.06);
+    }
+
+    .input-group .eye {
+        position: absolute;
+        right: 10px;
+        top: 36px;
+        cursor: pointer;
+        color: #8193a6;
+        font-size: 16px;
+    }
+
+    .buttons {
+        display:flex;
+        gap:10px;
+        margin-top: 10px;
+        justify-content: center;
+    }
+
+    .btn {
+        background-color: #ef233c;
+        color: white;
+        border: none;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 15px;
+        cursor: pointer;
+        width: 170px;
+        transition: 0.18s;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        gap:8px;
+    }
+    .btn:hover { background-color: #d90429; }
+
+    .btn.admin {
+        background-color: #2b2d42;
+        width: 170px;
+    }
+    .btn.admin:hover { background-color: #1a1c2c; }
+
+    #message {
+        color: #c0392b;
+        margin-top: 12px;
+        font-weight: 600;
+        min-height: 20px;
+    }
+
+    footer {
+        margin-top: 18px;
+        font-size: 12px;
+        color: #555;
+    }
+
+    /* Mobile adjustments */
+    @media (max-width:420px){
+        .login-container { width: 92%; padding: 28px; }
+        .buttons { flex-direction: column; gap:8px; }
+        .btn, .btn.admin { width: 100%; }
+    }
+</style>
+</head>
+<body>
+
+<div class="login-container" role="main" aria-labelledby="loginTitle">
+    <img src="images/logo.png" alt="Logo">
+    <h2 id="loginTitle"><i class="fa-solid fa-industry"></i> Suivi Production</h2>
+
+    <div class="input-group">
+        <label for="code">Code / Mot de passe</label>
+        <input id="code" type="password" autocomplete="current-password" inputmode="text" placeholder="Entrez votre code">
+        <span class="eye" id="togglePwd" title="Afficher / masquer"><i class="fa-solid fa-eye"></i></span>
+    </div>
+
+    <div class="buttons" role="group" aria-label="Actions de connexion">
+        <button class="btn" id="userBtn" title="Connexion Utilisateur"><i class="fa-solid fa-right-to-bracket"></i> Connexion USER</button>
+        <button class="btn admin" id="adminBtn" title="Connexion Admin"><i class="fa-solid fa-user-gear"></i> Connexion ADMIN</button>
+    </div>
+
+    <p id="message" aria-live="polite"></p>
+
+    <footer>© STEB - Suivi de production</footer>
+</div>
+
+<script>
+const ADMIN_CODE = 'ADMIN123'; // change si nécessaire
+const API_REDIRECT_USER = 'formulaire.html';
+const API_REDIRECT_ADMIN = 'admin-dashboard.html';
+
+const codeInput = document.getElementById('code');
+const msg = document.getElementById('message');
+const toggle = document.getElementById('togglePwd');
+const eyeIcon = toggle.querySelector('i');
+const userBtn = document.getElementById('userBtn');
+const adminBtn = document.getElementById('adminBtn');
+
+// Toggle show/hide password
+toggle.addEventListener('click', () => {
+    if (codeInput.type === 'password') {
+        codeInput.type = 'text';
+        eyeIcon.classList.remove('fa-eye');
+        eyeIcon.classList.add('fa-eye-slash');
+    } else {
+        codeInput.type = 'password';
+        eyeIcon.classList.remove('fa-eye-slash');
+        eyeIcon.classList.add('fa-eye');
+    }
+    codeInput.focus();
+});
+
+// Common login logic (checks code and redirects)
+function handleLogin(asAdminButton = false) {
+    const code = codeInput.value.trim().toUpperCase();
+    msg.textContent = '';
+
+    // If admin button clicked, prefer admin behavior: require admin code
+    if (asAdminButton) {
+        if (code === ADMIN_CODE) {
+            localStorage.setItem('role','admin');
+            window.location.href = API_REDIRECT_ADMIN;
+        } else {
+            msg.textContent = '❌ Code admin invalide';
+            return;
+        }
+        return;
+    }
+
+    // Normal login (user or admin code typed)
+    if (code === ADMIN_CODE) {
+        localStorage.setItem('role','admin');
+        window.location.href = API_REDIRECT_ADMIN;
+        return;
+    }
+
+    if (code === 'R3' || code === 'R4' || code === 'R6') {
+        let centre = code === 'R3' ? 'Assemblage' : (code === 'R4' ? 'SKZ' : 'Finition');
+        localStorage.setItem('centreCharge', centre);
+        localStorage.setItem('role', 'user');
+        window.location.href = API_REDIRECT_USER;
+        return;
+    }
+
+    msg.textContent = '❌ Code invalide';
+}
+
+// Buttons use handleLogin (admin button forces admin flow)
+userBtn.addEventListener('click', () => handleLogin(false));
+adminBtn.addEventListener('click', () => handleLogin(true));
+
+// allow Enter key to submit (acts like user login)
+codeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        handleLogin(false);
+    }
+});
+
+// accessibility: clear message when typing
+codeInput.addEventListener('input', ()=> { msg.textContent = ''; });
+
+</script>
+
+</body>
+</html>

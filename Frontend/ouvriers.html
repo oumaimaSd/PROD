@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Gestion des Ouvriers</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+/* ----- STYLES GÉNÉRAUX ----- */
+body {
+  font-family: "Poppins", sans-serif;
+  background: #f5f6fa;
+  margin: 0;
+  padding: 70px 0 60px 0; /* espace pour navbar + footer */
+  color: #333;
+}
+
+nav {
+  background-color: #2b2d42;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* <-- équilibre parfait gauche / centre / droite */
+  padding: 6px 25px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+/* Gauche */
+.nav-left h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+/* Centre */
+.nav-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  flex: 1; /* équilibre au centre */
+}
+
+/* Droite */
+.nav-right {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Boutons */
+.nav-center button,
+.nav-right button {
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.3s;
+  padding: 8px 16px;
+}
+
+.btn-production { background-color: #971010; }
+.btn-ouvrier { background-color: #0984e3; }
+.btn-historique { background-color: #00b894; }
+.btn-deconnexion { background-color: #d63031; }
+
+.nav-center button:hover,
+.nav-right button:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+.btn-ouvrier { background-color: #0984e3; }
+.btn-historique { background-color: #00b894; }
+.btn-deconnexion { background-color: #d63031; 
+margin-right:80px;}
+
+
+.btn-ouvrier:hover,
+.btn-historique:hover,
+.btn-production:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+.logout-btn {
+  background-color: #d63031;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 8px 14px;
+  transition: 0.3s;
+}
+
+.logout-btn:hover {
+  background-color: #e84118;
+}
+
+/* ----- CONTENU PRINCIPAL ----- */
+section {
+  width: 90%;
+  max-width: 1000px;
+  margin: 30px auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+section h3 {
+  color: #2b2d42;
+  text-align: center;
+  border-bottom: 3px solid #971010;
+  display: inline-block;
+  padding-bottom: 5px;
+  margin-bottom: 25px;
+}
+
+/* ----- FILTRE ----- */
+.filter-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.filter-container input[type="text"] {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 2px solid #ccc;
+  font-size: 15px;
+  width: 280px;
+  outline: none;
+  transition: all 0.3s;
+}
+
+.filter-container input[type="text"]:focus {
+  border-color: #971010;
+  box-shadow: 0 0 5px rgba(151,16,16,0.4);
+}
+
+/* ----- FORM AJOUT ----- */
+.form-ajout {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.form-ajout input[type="text"] {
+  padding: 10px 15px;
+  border-radius: 8px;
+  border: 2px solid #ccc;
+  font-size: 15px;
+  width: 260px;
+  outline: none;
+  transition: all 0.3s;
+  margin-right: 10px;
+}
+
+.form-ajout input[type="text"]:focus {
+  border-color: #971010;
+}
+
+.add-btn {
+  background: #971010;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.add-btn:hover {
+  background: #b71c1c;
+  transform: scale(1.05);
+}
+
+/* ----- TABLEAU ----- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f2f2f2;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+thead {
+  background-color: #cfcfcf;
+  color: #2b2d42;
+}
+
+th, td {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+}
+
+tr:hover {
+  background-color: #f1f1f1;
+}
+
+th {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ----- FOOTER ----- */
+footer {
+  background-color: #2b2d42;
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+  font-size: 13px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+}
+.btn-ouvrier1 {
+  background:#e1d613;;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;      /* taille plus compacte */
+  font-size: 18px;        /* taille de l’icône */
+  cursor: pointer;
+  transition: 0.3s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;             /* largeur fixe */
+  height: 40px; 
+  margin-right: 2px;           /* hauteur fixe */
+}
+</style>
+</head>
+
+<body>
+<nav>
+  <div class="nav-left">
+    <h2 id="titreCentre">Nom du Centre</h2>
+  </div>
+
+  <div class="nav-center">
+        <button class="btn-ouvrier1" onclick="window.location.href='formulaire.html'">
+  <i class="fa-solid fa-plus"></i> 
+</button>
+    <button class="btn-production" onclick="window.location.href='production.html'">
+      <i class="fa-solid fa-industry"></i>
+    </button>
+    <button class="btn-ouvrier" onclick="window.location.href='ouvriers.html'">
+      <i class="fa-solid fa-people-roof"></i>
+    </button>
+    <button class="btn-historique" onclick="window.location.href='archive.html'">
+      <i class="fa-solid fa-clock-rotate-left"></i>
+    </button>
+  </div>
+
+  <div class="nav-right">
+    <button class="btn-deconnexion" onclick="logout()">
+      <i class="fa-solid fa-right-from-bracket"></i>
+    </button>
+  </div>
+</nav>
+
+
+
+<!-- CONTENU -->
+<section>
+  <h3>Gestion des Ouvriers</h3>
+
+  <div class="filter-container">
+    <input type="text" id="filterOuvrier" placeholder="🔎 Filtrer par nom" oninput="filtrerOuvriers()">
+  </div>
+
+  <div class="form-ajout">
+    <input type="text" id="nomOuvrier" placeholder="Nom de l'ouvrier">
+    <button class="add-btn" onclick="ajouterOuvrier()">Ajouter</button>
+  </div>
+
+  <table id="tableOuvriers">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nom</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Dynamique -->
+    </tbody>
+  </table>
+</section>
+
+<footer>
+  © 2025 STEB — Système de Gestion des Ouvriers
+</footer>
+
+<script>
+const API = "http://192.168.1.250:4800";
+let ouvriersData = [];
+let currentEditOuvrier = null;
+
+document.getElementById('titreCentre').innerText =
+  localStorage.getItem('centreCharge') || "Nom du Centre";
+
+async function afficherOuvriers() {
+  const res = await fetch(`${API}/ouvriers`);
+  ouvriersData = await res.json();
+  remplirTableau(ouvriersData);
+}
+
+function remplirTableau(data) {
+  const tbody = document.querySelector('#tableOuvriers tbody');
+  tbody.innerHTML = '';
+  data.forEach(o => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${o.id}</td><td>${o.nom}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function ajouterOuvrier() {
+  const nom = document.getElementById('nomOuvrier').value.trim();
+  if (!nom) return alert("Veuillez saisir un nom !");
+  await fetch(`${API}/ouvrier`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({nom})
+  });
+  document.getElementById('nomOuvrier').value = '';
+  afficherOuvriers();
+}
+
+function filtrerOuvriers() {
+  const val = document.getElementById('filterOuvrier').value.trim().toLowerCase();
+  const resultats = ouvriersData.filter(o => o.nom.toLowerCase().includes(val));
+  remplirTableau(resultats);
+}
+
+function logout() {
+  if (confirm("Voulez-vous vous déconnecter ?")) {
+    localStorage.clear();
+    window.location.href = "index.html";
+  }
+}
+
+afficherOuvriers();
+</script>
+</body>
+</html>

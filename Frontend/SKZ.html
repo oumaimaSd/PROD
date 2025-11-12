@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi de Production | STEB</title>
+
+<!-- Librairies externes -->
+<script src="https://unpkg.com/html5-qrcode"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+/* Styles identiques à ton code précédent */
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #f4f5f7;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+/* Nav, form, etc. inchangés */
+nav {
+  background-color: #971010;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+nav h2 { font-size: 18px; margin: 0; }
+.nav-center button, nav button {
+  background: #fff; color: #971010; border: none;
+  padding: 8px 14px; border-radius: 8px;
+  font-weight: 600; cursor: pointer; transition: 0.3s;
+}
+.nav-center button:hover { background: #e8e8e8; transform: scale(1.05); }
+
+.form-section {
+  background: #fff; margin: 100px auto 30px; padding: 20px 25px;
+  border-radius: 12px; width: 90%; max-width: 800px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.form-section input, .form-section select, .form-section textarea {
+  width: 100%; margin-bottom: 15px; padding: 12px;
+  border: 1.5px solid #ccc; border-radius: 8px; font-size: 15px;
+}
+.form-section input:focus, select:focus, textarea:focus {
+  border-color: #971010; box-shadow: 0 0 5px rgba(151,16,16,0.3);
+}
+#btnDebut {
+  width: 100%; background-color: #971010; color: #fff; border: none;
+  border-radius: 8px; padding: 14px; font-size: 16px; font-weight: 600;
+  cursor: pointer; transition: 0.3s;
+}
+#btnDebut:hover { background-color: #b71c1c; }
+</style>
+</head>
+
+<body>
+<nav style="display:flex; align-items:center; justify-content:space-between; padding:10px 20px; background:#cfd0d4; color:rgb(151, 16, 16);">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <h2 id="titreCentre">Nom du Centre</h2>
+  </div>
+  <div class="nav-center">
+    <button class="btn-ouvrier" onclick="window.location.href='formulaire.html'">
+      <i class="fa-solid fa-plus"></i>
+    </button>
+    <button onclick="window.location.href='production.html'">
+      <i class="fa-solid fa-people-roof"></i> Production
+    </button>
+    <button onclick="window.location.href='archive.html'">
+      <i class="fa-solid fa-clock-rotate-left"></i> Historique
+    </button>
+    <button onclick="window.location.href='ouvriers.html'">
+      <i class="fa-solid fa-users"></i> Ouvriers
+    </button>
+  </div>
+  <button onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+</nav>
+
+<!-- Formulaire -->
+<section class="form-section">
+  <div class="scanner"><div id="reader" style="width:280px;"></div></div>
+
+  <input type="text" id="nDocument" placeholder="📄 N° Document (ou scanner)">
+  <select id="nomOperateur" multiple placeholder="--Choisir Ouvrier--"></select>
+  <input type="number" id="nbreOperateurs" placeholder="👥 Nombre d'opérateurs">
+
+  <select id="numMachine">
+    <option value="">--Choisir Machine--</option>
+    <option>M1</option><option>M2</option><option>M3</option>
+    <option>M4</option><option>M5</option><option>M6</option>
+    <option>M7</option><option>M8</option><option>M9</option>
+    <option>M10</option><option>M11</option><option>M12</option><option>M13</option>
+  </select>
+
+  <!-- ✅ Nouvelle liste d’opérations -->
+  <select id="operation">
+    <option value="">--Choisir Opération--</option>
+    <option>Piquage</option>
+    <option>Renfort</option>
+    <option>Galonnage 1</option>
+    <option>Galonnage 2</option>
+    <option>Collage UV</option>
+    <option>Piquage UV</option>
+    <option>Collage Latte</option>
+    <option>Piquage Latte</option>
+    <option>Collage K5</option>
+    <option>Collage K6</option>
+    <option>Collage K7</option>
+    <option>Collage EFLEX</option>
+    <option>Piquage K5</option>
+    <option>Piquage K6</option>
+    <option>Piquage K7</option>
+    <option>Piquage EFLEX</option>
+    <option>1er Assemblage</option>
+    <option>2ème Assemblage</option>
+    <option>Retouche</option>
+  </select>
+
+  <!-- ✅ Champ remarque qui devient obligatoire si Retouche -->
+  <textarea id="remarque" placeholder="Remarque (obligatoire si Retouche)" rows="3"></textarea>
+
+  <button id="btnDebut" onclick="ajouterTache()"><i class="fa-solid fa-play"></i> Démarrer Tâche</button>
+</section>
+
+<script src="script.js"></script>
+<script>
+document.getElementById('titreCentre').innerText = localStorage.getItem('centreCharge') || '';
+
+function logout() {
+  localStorage.clear();
+  window.location.href = 'login.html';
+}
+
+function startScanner() {
+  const html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 200 },
+    qrCodeMessage => {
+      document.getElementById("nDocument").value = qrCodeMessage;
+      html5QrCode.stop();
+    });
+}
+startScanner();
+
+const selectOuvriers = document.getElementById('nomOperateur');
+const inputNbOuvriers = document.getElementById('nbreOperateurs');
+selectOuvriers.addEventListener('change', () => {
+  const selected = Array.from(selectOuvriers.selectedOptions).length;
+  inputNbOuvriers.value = selected;
+});
+
+// ✅ Rendre la remarque obligatoire si Retouche
+const operationSelect = document.getElementById('operation');
+const remarqueInput = document.getElementById('remarque');
+operationSelect.addEventListener('change', () => {
+  if (operationSelect.value === 'Retouche') {
+    remarqueInput.required = true;
+    remarqueInput.style.borderColor = 'red';
+  } else {
+    remarqueInput.required = false;
+    remarqueInput.style.borderColor = '#ccc';
+  }
+});
+</script>
+</body>
+</html>

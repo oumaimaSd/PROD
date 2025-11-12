@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Historique des Pauses</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+body {
+  font-family: "Poppins", sans-serif;
+  background: linear-gradient(135deg, #f5f6fa, #dcdde1);
+  margin: 0;
+  padding: 0;
+}
+nav {
+  background-color: #e7e8eb;
+  color: #272525;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 25px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+nav h2 { margin: 0; font-size: 20px; }
+nav button {
+  background-color: #971010;
+  border: none;
+  color: #fff;
+  font-size: 15px;
+  padding: 8px 15px;
+  margin-left: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+nav button:hover { background-color: #b11b1b; transform: scale(1.05); }
+
+table {
+  width: 95%;
+  margin: 20px auto;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+thead {
+  background-color: #971010;
+  color: #fff;
+}
+th, td {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+}
+tr:hover { background-color: #f7f7f7; }
+
+.filter-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px;
+  flex-wrap: wrap;
+}
+.filter-container input {
+  padding: 10px;
+  border-radius: 8px;
+  border: 2px solid #ccc;
+  outline: none;
+}
+footer {
+  background-color: #2b2d42;
+  color: #fff;
+  text-align: center;
+  padding: 10px;
+  font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+<nav>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <img src="images/logo.png" alt="Logo" style="height:40px;">
+    <h2>Historique des Pauses</h2>
+  </div>
+  <div>
+    <button onclick="window.location.href='production.html'"><i class="fa-solid fa-toolbox"></i> Production</button>
+    <button onclick="window.location.href='historique.html'"><i class="fa-solid fa-clock-rotate-left"></i> Historique</button>
+  </div>
+  <div style="text-align:center; margin-top:10px;">
+  <button onclick="window.history.back()" style="background:#971010;color:white;padding:8px 15px;border:none;border-radius:8px;cursor:pointer;">
+    ⬅️ Retour
+  </button>
+</div>
+
+</nav>
+
+<div class="filter-container">
+  <input type="text" id="filterDoc" placeholder="🔎 N° Document" oninput="filtrer()">
+  <input type="text" id="filterOuvrier" placeholder="👷 Nom Ouvrier" oninput="filtrer()">
+  <input type="text" id="filterCause" placeholder="📝 Cause" oninput="filtrer()">
+</div>
+
+<table id="tablePauses">
+  <thead>
+    <tr>
+      <th>N° Document</th>
+      <th>Nom Opérateur</th>
+      <th>Pause #</th>
+      <th>Cause</th>
+      <th>Début</th>
+      <th>Fin</th>
+      <th>Durée (min)</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<footer>© 2025 STEB | Historique des Pauses</footer>
+
+<script>
+const API = "http://192.168.1.250:4800";
+let pausesData = [];
+
+async function chargerPauses() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const numDoc = urlParams.get("nDocument");
+
+  const res = await fetch(`${API}/pauses`);
+  const data = await res.json();
+
+  // Si un numéro de document est passé en paramètre, on filtre
+  if (numDoc) {
+    pausesData = data.filter(p => p.nDocument === numDoc);
+    document.querySelector("h2").innerText = `Historique des Pauses — ${numDoc}`;
+  } else {
+    pausesData = data;
+  }
+
+  remplirTableau(pausesData);
+}
+
+function remplirTableau(data) {
+  const tbody = document.querySelector("#tablePauses tbody");
+  tbody.innerHTML = "";
+  data.forEach(p => {
+    const tr = document.createElement("tr");
+    let ouvriers = [];
+    try { ouvriers = JSON.parse(p.nomOperateur); } catch { ouvriers = [p.nomOperateur]; }
+    tr.innerHTML = `
+      <td>${p.nDocument}</td>
+      <td>${ouvriers.join(", ")}</td>
+      <td>${p.numeroPause}</td>
+      <td>${p.cause}</td>
+      <td>${new Date(p.debut).toLocaleString()}</td>
+      <td>${p.fin ? new Date(p.fin).toLocaleString() : "—"}</td>
+     <td>${formatHMS(p.duree)}</td>
+
+    `;
+    tbody.appendChild(tr);
+  });
+}
+function formatHMS(totalMinutes) {
+  if (!totalMinutes || totalMinutes === "-" || isNaN(totalMinutes)) return "—";
+  
+  const totalSeconds = Math.round(totalMinutes * 60);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+
+function filtrer() {
+  const doc = document.getElementById("filterDoc").value.toLowerCase();
+  const ouv = document.getElementById("filterOuvrier").value.toLowerCase();
+  const cause = document.getElementById("filterCause").value.toLowerCase();
+
+  const filtres = pausesData.filter(p => 
+    p.nDocument.toLowerCase().includes(doc) &&
+    p.nomOperateur.toLowerCase().includes(ouv) &&
+    p.cause.toLowerCase().includes(cause)
+  );
+  remplirTableau(filtres);
+}
+
+chargerPauses();
+</script>
+</body>
+</html>
