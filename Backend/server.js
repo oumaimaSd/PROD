@@ -445,7 +445,8 @@ app.get('/archive', (req, res) => {
   });
 });
 
-// ─── Lancement du serveur ─────────────────────────────────────
-app.listen(port, '0.0.0.0', () => {
-  console.log(`✅ Serveur Node.js démarré sur http://192.168.1.250:${port}`);
+const PORT = process.env.PORT || 4800;
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Serveur Node.js démarré sur le port ${PORT}`);
 });
