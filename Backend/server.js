@@ -472,6 +472,123 @@ app.get('/archive', (req, res) => {
 });
 
 
+app.get('/import-taches', (req, res) => {
+  db.all("SELECT * FROM taches", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows); 
+  });
+});
+
+app.get('/ouvriers', (req, res) => {
+  db.all("SELECT * FROM ouvriers", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+app.get('/enCours', (req, res) => {
+  db.all("SELECT * FROM taches WHERE status!='FINI'", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.get('/historique', (req, res) => {
+  db.all("SELECT * FROM taches WHERE status='FINI'", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.get('/historiquePause/:id', (req, res) => {
+  const { id } = req.params;
+  db.get("SELECT pauses FROM taches WHERE id = ?", [id], (err, row) => {
+    if (err) return res.status(500).json({ error: err.message });
+    if (!row || !row.pauses) return res.json([]);
+    const pauses = JSON.parse(row.pauses);
+    res.json(pauses.map(p => ({
+      cause: p.cause || "-",
+      debut: p.debut,
+      fin: p.fin,
+      dureeMinutes: p.fin ? ((new Date(p.fin) - new Date(p.debut)) / 60000) : 0
+    })));
+  });
+});
+
+app.get('/historiqueEquipe/:id', (req, res) => {
+  const { id } = req.params;
+  db.all(
+    "SELECT details, dateAction FROM historique WHERE idTache = ? AND typeAction = 'Modification Ouvriers' ORDER BY dateAction DESC",
+    [id],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      const result = rows.map(r => {
+        const match = r.details.match(/\[(.*?)\] → \[(.*?)\]/);
+        const nouveaux = match ? match[2].split(',').map(s => s.trim()).filter(Boolean) : [];
+        return { debut: r.dateAction, fin: r.dateAction, ouvriers: nouveaux, nbreOperateurs: nouveaux.length };
+      });
+      res.json(result);
+    }
+  );
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../Frontend/login.html'));
+});
+
+app.get('/pauses', (req, res) => {
+  db.all("SELECT id, nDocument, nomOperateur, pauses FROM taches WHERE pauses IS NOT NULL AND pauses != '[]'", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const allPauses = [];
+    rows.forEach(t => {
+      let pauses = JSON.parse(t.pauses || "[]");
+      pauses.forEach((p, index) => allPauses.push({
+        idTache: t.id,
+        nDocument: t.nDocument,
+        nomOperateur: t.nomOperateur,
+        cause: p.cause,
+        debut: p.debut,
+        fin: p.fin,
+        duree: p.fin ? ((new Date(p.fin) - new Date(p.debut)) / 60000).toFixed(1) : "-",
+        numeroPause: index + 1
+      }));
+    });
+    res.json(allPauses);
+  });
+});
+
+app.get('/stats/pauses', (req, res) => {
+  db.all("SELECT causePause, COUNT(*) as total FROM taches WHERE causePause IS NOT NULL AND causePause != '' GROUP BY causePause", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.get('/stats/taches-par-ouvrier', (req, res) => {
+  db.all("SELECT nomOperateur, COUNT(*) as total FROM taches GROUP BY nomOperateur", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+app.get('/archive', (req, res) => {
+  db.all("SELECT * FROM historique ORDER BY dateAction DESC", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+app.get('/tache/:id/historiqueOuvriers', (req, res) => {
+  const { id } = req.params;
+  db.all(
+    "SELECT typeAction, details, dateAction FROM historique WHERE idTache = ? AND typeAction = 'Modification Ouvriers' ORDER BY dateAction DESC",
+    [id],
+    (err, rows) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!rows || rows.length === 0) return res.json({ message: "Aucun historique d’équipe enregistré pour cette tâche." });
+      res.json(rows);
+    }
+  );
+});
+
+
 app.listen(port, '0.0.0.0', () => {
-  console.log(`✅ Serveur Node.js démarré sur http://192.168.1.250:${port}`);
+  console.log(`✅ Serveur Node.js démarré sur http://192.168.1.193:${port}`);
 });
