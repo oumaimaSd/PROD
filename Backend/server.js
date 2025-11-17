@@ -587,6 +587,28 @@ app.get('/tache/:id/historiqueOuvriers', (req, res) => {
     }
   );
 });
+const axios = require('axios');
+const fs = require('fs');
+
+app.post('/admin/import-from-github', async (req, res) => {
+  const githubDB = "https://raw.githubusercontent.com/oumaimaSd/PROD/main/Backend/db.sqlite";
+  const localDB = './db.sqlite';
+
+  try {
+    console.log("⬇️ Téléchargement DB depuis GitHub...");
+
+    const response = await axios.get(githubDB, { responseType: "arraybuffer" });
+
+    fs.writeFileSync(localDB, response.data);
+
+    console.log("✅ DB mise à jour avec succès depuis GitHub !");
+    res.json({ success: true, message: "DB importée depuis GitHub ✔️" });
+
+  } catch (e) {
+    console.error("❌ Erreur import GitHub :", e.message);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
 
 
 app.listen(port, '0.0.0.0', () => {
