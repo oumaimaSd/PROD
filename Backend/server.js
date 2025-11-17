@@ -587,28 +587,33 @@ app.get('/tache/:id/historiqueOuvriers', (req, res) => {
     }
   );
 });
-const axios = require('axios');
-const fs = require('fs');
+const axios = require("axios");
+const fs = require("fs");
+const path = require("path");
 
-app.post('/admin/import-from-github', async (req, res) => {
-  const githubDB = "https://raw.githubusercontent.com/oumaimaSd/PROD/main/Backend/db.sqlite";
-  const localDB = './db.sqlite';
+const DB_URL = "https://raw.githubusercontent.com/oumaimaSd/PROD/main/Backend/db.sqlite";
 
+app.get("/import-db", async (req, res) => {
   try {
-    console.log("⬇️ Téléchargement DB depuis GitHub...");
+    const response = await axios({
+      url: DB_URL,
+      method: "GET",
+      responseType: "arraybuffer"
+    });
 
-    const response = await axios.get(githubDB, { responseType: "arraybuffer" });
+    const dbPath = path.join(__dirname, "db.sqlite");
 
-    fs.writeFileSync(localDB, response.data);
+    fs.writeFileSync(dbPath, response.data);
 
-    console.log("✅ DB mise à jour avec succès depuis GitHub !");
-    res.json({ success: true, message: "DB importée depuis GitHub ✔️" });
+    console.log("📥 DB mise à jour avec succès !");
+    res.json({ message: "📥 Base de données importée avec succès !" });
 
-  } catch (e) {
-    console.error("❌ Erreur import GitHub :", e.message);
-    res.status(500).json({ success: false, error: e.message });
+  } catch (err) {
+    console.error("❌ Erreur import DB :", err.message);
+    res.status(500).json({ error: "Erreur lors de l'import DB" });
   }
 });
+
 
 
 app.listen(port, '0.0.0.0', () => {
