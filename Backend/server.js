@@ -589,7 +589,6 @@ app.get('/tache/:id/historiqueOuvriers', (req, res) => {
 });
 const axios = require("axios");
 const fs = require("fs");
-const path = require("path");
 
 const DB_URL = "https://raw.githubusercontent.com/oumaimaSd/PROD/main/Backend/db.sqlite";
 
