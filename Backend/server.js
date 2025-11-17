@@ -1,4 +1,4 @@
-// ─── Gestion erreurs globales ────────────────────────────────
+
 process.on('uncaughtException', (err) => {
   console.error('❌ Erreur non capturée :', err);
 });
@@ -6,7 +6,7 @@ process.on('unhandledRejection', (reason) => {
   console.error('❌ Promesse rejetée non gérée :', reason);
 });
 
-// ─── Imports et configuration serveur ─────────────────────────
+
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
@@ -14,7 +14,6 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 const port = 4800;
-const backupUrl = "https://raw.githubusercontent.com/oumaimaSd/PROD/main/Backend/database.db";
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -22,7 +21,6 @@ app.use(express.static(path.join(__dirname, '../Frontend')));
 
 const db = new sqlite3.Database('./db.sqlite');
 
-// ─── Vérification / création des tables principales ───────────
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS taches (
@@ -75,7 +73,7 @@ db.serialize(() => {
   console.log("✅ Vérification des tables terminée (taches + enCours + historique + ouvriers)");
 });
 
-// ─── Vérification des colonnes manquantes (sécurisé) ─────────
+
 const ensureColumn = (table, columnDef) => {
   const colName = columnDef.split(' ')[0];
   db.run(`ALTER TABLE ${table} ADD COLUMN ${columnDef}`, (err) => {
@@ -95,7 +93,6 @@ ensureColumn('historique', 'dateAction TEXT');
 ensureColumn('taches', 'nomOperateur TEXT');
 ensureColumn('taches', 'nbreOperateurs INTEGER');
 
-// ─── Routes Ouvriers ─────────────────────────────────────────
 app.post('/ouvrier', (req, res) => {
   const { nom } = req.body;
   db.run("INSERT INTO ouvriers (nom) VALUES (?)", [nom], function(err) {
@@ -128,7 +125,6 @@ app.delete('/ouvrier/:id', (req, res) => {
   });
 });
 
-// ─── Gestion des Tâches ──────────────────────────────────────
 app.post('/tache/debut', (req, res) => {
   const t = req.body;
   db.run(
@@ -155,7 +151,7 @@ app.get('/historique', (req, res) => {
     res.json(rows);
   });
 });
-// ─── Historique des pauses ───────────────────────────────
+
 app.get('/historiquePause/:id', (req, res) => {
   const { id } = req.params;
 
@@ -168,7 +164,7 @@ app.get('/historiquePause/:id', (req, res) => {
       const result = pauses.map(p => {
         const debut = new Date(p.debut);
         const fin = new Date(p.fin);
-        const duree = (fin - debut) / 60000; // minutes
+        const duree = (fin - debut) / 60000; 
 
         return {
           cause: p.cause || "-",
@@ -186,7 +182,7 @@ app.get('/historiquePause/:id', (req, res) => {
 });
 
 
-// ─── Historique des équipes (ouvriers) ───────────────────
+
 app.get('/historiqueEquipe/:id', (req, res) => {
   const { id } = req.params;
   db.all(
@@ -197,14 +193,14 @@ app.get('/historiqueEquipe/:id', (req, res) => {
       if (!rows || rows.length === 0) return res.json([]);
 
       const result = rows.map(r => {
-        // Extraction basique depuis la chaîne `details`
+    
         const match = r.details.match(/\[(.*?)\] → \[(.*?)\]/);
         const anciens = match ? match[1].split(',').map(s => s.trim()).filter(Boolean) : [];
         const nouveaux = match ? match[2].split(',').map(s => s.trim()).filter(Boolean) : [];
 
         return {
           debut: r.dateAction,
-          fin: r.dateAction, // pas de fin connue
+          fin: r.dateAction,
           ouvriers: nouveaux,
           nbreOperateurs: nouveaux.length
         };
@@ -236,7 +232,7 @@ app.delete('/tache/:id', (req, res) => {
   });
 });
 
-// ─── Pauses (pause / reprise / ajout) ─────────────────────────
+
 app.post('/tache/pause', (req, res) => {
   const { id, cause } = req.body;
   const debut = new Date().toISOString();
@@ -259,6 +255,37 @@ app.post('/tache/pause', (req, res) => {
     );
   });
 });
+app.get('/recalculer-durees', (req, res) => {
+  db.all("SELECT * FROM taches WHERE status='FINI'", [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+
+    rows.forEach(t => {
+      let dureePause = 0;
+      try {
+        const pauses = JSON.parse(t.pauses || "[]");
+        dureePause = pauses.reduce((sum, p) => {
+          if (p.debut && p.fin) {
+            let diff = (new Date(p.fin) - new Date(p.debut)) / 60000;
+            if (diff < 0) diff += 24 * 60; // Corrige minuit
+            return sum + diff;
+          }
+          return sum;
+        }, 0);
+      } catch {}
+
+      const dateFin = new Date(t.dateFin);
+      const dateDebut = new Date(t.dateDebut);
+      const periodeTotale = ((dateFin - dateDebut) / 60000 - dureePause) * (t.nbreOperateurs || 1);
+
+      db.run(
+        "UPDATE taches SET dureePause=?, periodeTotale=? WHERE id=?",
+        [dureePause, periodeTotale, t.id]
+      );
+    });
+
+    res.json({ message: "✅ Recalcul terminé pour toutes les tâches FINI" });
+  });
+});
 
 app.post('/tache/reprendre', (req, res) => {
   const { id } = req.body;
@@ -268,7 +295,8 @@ app.post('/tache/reprendre', (req, res) => {
     if (!row) return res.status(404).json({ error: "Tâche introuvable" });
 
     const finPause = new Date();
-    const pauseMinutes = (finPause - new Date(row.pauseDebut)) / 60000;
+let pauseMinutes = (finPause - new Date(row.pauseDebut)) / 60000;
+if (pauseMinutes < 0) pauseMinutes += 24 * 60; 
     const totalPause = (row.dureePause || 0) + pauseMinutes;
 
     let pauses = [];
@@ -310,7 +338,7 @@ app.post("/tache/ajouterPause", (req, res) => {
   });
 });
 
-// ─── Fin de tâche ─────────────────────────────────────────────
+
 app.post('/tache/fin', (req, res) => {
   const { id, nbreOperateurs, dateDebut, dureePause } = req.body;
   const dateFin = new Date();
@@ -325,7 +353,6 @@ app.post('/tache/fin', (req, res) => {
   );
 });
 
-// ─── Statistiques ─────────────────────────────────────────────
 app.get('/stats/pauses', (req, res) => {
   db.all("SELECT causePause, COUNT(*) as total FROM taches WHERE causePause IS NOT NULL AND causePause != '' GROUP BY causePause", [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -340,12 +367,10 @@ app.get('/stats/taches-par-ouvrier', (req, res) => {
   });
 });
 
-// ─── Page d’accueil ───────────────────────────────────────────
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../Frontend/login.html'));
 });
 
-// ─── Route Pauses (liste complète) ────────────────────────────
 app.get('/pauses', (req, res) => {
   db.all("SELECT id, nDocument, nomOperateur, pauses FROM taches WHERE pauses IS NOT NULL AND pauses != '[]'", [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -371,7 +396,7 @@ app.get('/pauses', (req, res) => {
   });
 });
 
-// ─── Modifier une tâche ───────────────────────────────────────
+
 app.post('/tache/modifier', (req, res) => {
   const { id, nDocument, nbreOperateurs, numMachine, operation, nomOperateur } = req.body;
   if (!id) return res.status(400).json({ error: 'id manquant' });
@@ -389,7 +414,7 @@ app.post('/tache/modifier', (req, res) => {
   );
 });
 
-// ─── Modifier ouvriers et enregistrer dans historique ─────────
+
 app.post('/tache/modifierOuvriers', (req, res) => {
   const { id, anciensOuvriers, nouveauxOuvriers, nbreOperateurs } = req.body;
 
@@ -438,7 +463,7 @@ app.post('/tache/modifierOuvriers', (req, res) => {
     }
   );
 });
-// ─── Route Archive (historique complet des actions) ───────────
+
 app.get('/archive', (req, res) => {
   db.all("SELECT * FROM historique ORDER BY dateAction DESC", [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -446,8 +471,7 @@ app.get('/archive', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 4800;
 
-app.listen(PORT, () => {
-  console.log(`✅ Serveur Node.js démarré sur le port ${PORT}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`✅ Serveur Node.js démarré sur http://192.168.1.250:${port}`);
 });
